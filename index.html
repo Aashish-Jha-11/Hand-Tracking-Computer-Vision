@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Neural Hand Tracking System v2.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a0e2e 50%, #0a0a0a 100%);
+      font-family: 'Rajdhani', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      position: relative;
+    }
+
+    .grid-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.1;
+      background-image: 
+        linear-gradient(rgba(0, 255, 255, 0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 255, 0.3) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: gridMove 20s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes gridMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    .main-container {
+      position: relative;
+      z-index: 1;
+    }
+
+    .output_canvas {
+      z-index: 2;
+      position: absolute;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+    }
+
+    #webcam, .output_canvas {
+      transform: rotateY(180deg);
+    }
+
+    .hud-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      font-family: 'Orbitron', monospace;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .system-info {
+      background: rgba(0, 20, 40, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      border-radius: 10px;
+      padding: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+
+    .system-title {
+      color: #00ffff;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    .system-stats {
+      color: #ffffff;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      min-width: 200px;
+    }
+
+    .stat-value {
+      color: #00ff88;
+      font-weight: 600;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-online { background: #00ff88; }
+    .status-scanning { background: #ffaa00; }
+    .status-detecting { background: #ff0088; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Control Panel */
+    .control-panel {
+      background: rgba(0, 20, 40, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      border-radius: 10px;
+      padding: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      pointer-events: auto;
+    }
+
+    .control-title {
+      color: #00ffff;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-label {
+      color: #ffffff;
+      font-size: 12px;
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .control-slider {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .control-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00ffff;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mode-btn {
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      color: #00ffff;
+      padding: 8px 12px;
+      border-radius: 5px;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      pointer-events: auto;
+    }
+
+    .mode-btn:hover {
+      background: rgba(0, 255, 255, 0.2);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    }
+
+    .mode-btn.active {
+      background: rgba(0, 255, 255, 0.3);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+
+    /* Bottom HUD */
+    .hud-bottom {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .gesture-display {
+      background: rgba(0, 20, 40, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.5);
+      border-radius: 10px;
+      padding: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+
+    .gesture-title {
+      color: #00ffff;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    .current-gesture {
+      color: #00ff88;
+      font-size: 24px;
+      font-weight: 900;
+      text-shadow: 0 0 15px #00ff88;
+    }
+
+    /* Loading animation */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: #00ffff;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(0, 255, 255, 0.3);
+      border-top: 3px solid #00ffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-family: 'Orbitron', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .hud-top {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .hud-bottom {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .system-info, .control-panel, .gesture-display {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-background"></div>
+  
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">INITIALIZING NEURAL NETWORKS...</div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <video id="webcam" style="position: absolute" autoplay playsinline></video>
+    <canvas class="output_canvas" id="output_canvas"></canvas>
+  </div>
+
+  <!-- HUD Interface -->
+  <div class="hud-container">
+    <div class="hud-top">
+      <div class="system-info">
+        <div class="system-title">NEURAL HAND TRACKING v2.0</div>
+        <div class="system-stats">
+          <div class="stat-line">
+            <span>STATUS:</span>
+            <span><span class="status-indicator status-online"></span><span class="stat-value" id="systemStatus">ONLINE</span></span>
+          </div>
+          <div class="stat-line">
+            <span>FPS:</span>
+            <span class="stat-value" id="fpsCounter">60</span>
+          </div>
+          <div class="stat-line">
+            <span>HANDS DETECTED:</span>
+            <span class="stat-value" id="handsCount">0</span>
+          </div>
+          <div class="stat-line">
+            <span>PARTICLES:</span>
+            <span class="stat-value" id="particleCount">0</span>
+          </div>
+          <div class="stat-line">
+            <span>CONFIDENCE:</span>
+            <span class="stat-value" id="confidence">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div class="control-title">CONTROL MATRIX</div>
+        
+        <div class="control-group">
+          <label class="control-label">PARTICLE INTENSITY</label>
+          <input type="range" class="control-slider" id="particleIntensity" min="1" max="10" value="3">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label">TRAIL LENGTH</label>
+          <input type="range" class="control-slider" id="trailLength" min="100" max="1000" value="500">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label">GLOW INTENSITY</label>
+          <input type="range" class="control-slider" id="glowIntensity" min="0" max="100" value="50">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label">AUDIO VOLUME</label>
+          <input type="range" class="control-slider" id="audioVolume" min="0" max="100" value="30">
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label">VISUALIZATION MODE</label>
+          <div class="mode-buttons">
+            <button class="mode-btn active" data-mode="particles">PARTICLES</button>
+            <button class="mode-btn" data-mode="neural">NEURAL NET</button>
+            <button class="mode-btn" data-mode="hologram">HOLOGRAM</button>
+            <button class="mode-btn" data-mode="matrix">MATRIX</button>
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <label class="control-label">SYSTEM CONTROLS</label>
+          <div class="mode-buttons">
+            <button class="mode-btn" id="muteBtn">🔊 AUDIO</button>
+            <button class="mode-btn" id="fullscreenBtn">⛶ FULLSCREEN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="gesture-display">
+        <div class="gesture-title">GESTURE RECOGNITION</div>
+        <div class="current-gesture" id="currentGesture">SCANNING...</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./index.js"></script>
+</body>
+</html>
