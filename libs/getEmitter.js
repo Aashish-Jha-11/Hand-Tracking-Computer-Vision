@@ -65,5 +65,5 @@ function getEmitter() {
   }
   return { update, particles };
 }
-
+ 
 export default getEmitter;
