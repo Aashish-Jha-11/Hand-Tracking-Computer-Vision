@@ -1,4 +1,4 @@
- # Hand Tracking Computer Vision Project
+ # Hand Tracking Computer Vision Project 🖥️
 
 ## Why we need to run this on a live server
 
