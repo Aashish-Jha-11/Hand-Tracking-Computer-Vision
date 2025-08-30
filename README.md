@@ -14,7 +14,7 @@ This project uses **MediaPipe** and **ES6 modules** which require a live server 
 - Browsers require live server for ES6 modules
 - Cannot load modules from local file system
 
-### 3. **Camera Access**
+### 3. **Camera Access 📷**
 - `getUserMedia()` API requires secure context
 - Works on `localhost` or `https://` only
 - Blocked on `file://` protocol
